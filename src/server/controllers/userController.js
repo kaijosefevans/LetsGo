@@ -1,25 +1,42 @@
+/* eslint-disable camelcase */
+/* eslint-disable max-len */
 const bcrypt = require('bcrypt');
 const db = require('../models/LetsGoModel');
 
 const userController = {};
 // set up middleware to see if email was already used to sign up:
-// TODO: userController.checkEmail
+userController.checkEmail = (req, res, next) => {
+  const { email } = req.body;
+
+  const query = `SELECT * FROM "public"."Users" WHERE email = '${email}'`;
+  db.query(query)
+    .then((data) => {
+      if (data.rows.length > 0) {
+        return next({
+          log: 'error, email already exist',
+          status: 500,
+          message: { err: 'email already exist' },
+        });
+      }
+      return next();
+    });
+};
 
 // Create a userController as middleware to pass it userRouter:
 userController.addUser = (req, res, next) => {
-  // safety feature: VALUES ($1, $2, $3, $4, $5) 
+  // safety feature: VALUES ($1, $2, $3, $4, $5)
   // sanitizes i.e. saves from hackers...
   const query = `INSERT INTO "public"."Users" (first_name, last_name, email, password)
     VALUES ($1, $2, $3, $4) RETURNING *`;
   // Deconstruct column names from req.body:
   const {
-    first_name,
-    last_name,
+    firstName,
+    lastName,
     email,
   } = req.body;
   const values = [
-    first_name,
-    last_name,
+    firstName,
+    lastName,
     email,
     res.locals.bcrypt, // this is the resulting hash after passing our password through bcrypt
   ];
@@ -31,7 +48,7 @@ userController.addUser = (req, res, next) => {
     .catch((err) => next({
       log: 'error in addUser controller',
       status: 500,
-      message: { err }
+      message: { err },
     }));
 };
 // bcrypt middleware:
@@ -49,7 +66,7 @@ userController.bcrypt = (req, res, next) => {
   });
 };
 
-// login middleware: purpose is to check if the inputted password matches the password used when the user signed up
+// check if the inputted password matches the password used when the user signed up
 userController.login = (req, res, next) => {
   const { email, password } = req.body;
   const inputtedPassword = password;
@@ -66,7 +83,7 @@ userController.login = (req, res, next) => {
         .catch((err) => next({
           log: 'error',
           status: 500,
-          message: { err }
+          message: { err },
         }));
     } else return res.json('Email & password combination not found!');
   });
